@@ -2,132 +2,125 @@
 
 ## Target
 
-- URL: http://MACHINE_IP:5002
-- Scope: User Management API endpoints only
-- Authorization: TryHackMe lab — authorized testing
+| Field         | Value                                      |
+|---------------|--------------------------------------------|
+| Platform      | TryHackMe                                  |
+| Port          | 5002 (primary target)                      |
+| Tool          | Chrome browser (Pretty-print JSON), nmap   |
+| Authorization | TryHackMe lab — authorized testing only    |
 
 ---
 
-## Phase 1 — Reconnaissance (Browser + curl)
+## Phase 1 — Reconnaissance
 
-### 1.1 Visit the base URL
+### 1.1 Port Scan
 
-```
-http://MACHINE_IP:5002/
-```
-
-Look for:
-- Any visible links, forms, or API references
-- Response headers (Server, X-Powered-By, Content-Type)
-- HTML source — comments, hidden fields, hardcoded paths
-
-### 1.2 Check response headers
+Run a service/version scan against the target machine to identify open ports and running services.
 
 ```bash
-curl -I http://MACHINE_IP:5002/
+nmap -sC -sV <MACHINE_IP>
 ```
 
-Look for:
-- `Server:` header (reveals framework/version)
-- `X-Powered-By:` (e.g., Express, PHP)
-- Missing security headers (no `X-Content-Type-Options`, no `X-Frame-Options`)
+**Results:**
+
+| Port | State | Service | Version                        |
+|------|-------|---------|--------------------------------|
+| 22   | open  | SSH     | OpenSSH                        |
+| 5002 | open  | HTTP    | Werkzeug/3.1.3 Python/3.11.14  |
+| 5003 | open  | HTTP    | Werkzeug/3.1.3 Python/3.11.14  |
+| 5004 | open  | HTTP    | Werkzeug/3.1.3 Python/3.11.14  |
+
+**Key observations from nmap:**
+- Three separate HTTP services running on adjacent ports — likely different microservices or API modules
+- All three HTTP services identify themselves as **Werkzeug 3.1.3** running on **Python 3.11.14**
+- Framework and runtime version disclosed in the `Server` response header — a direct misconfiguration
+- SSH on port 22 is out of scope for this challenge
+
+### 1.2 Server Header Disclosure
+
+The `Server` header returned by the application exposes the full technology stack:
+
+```
+Server: Werkzeug/3.1.3 Python/3.11.14
+```
+
+**Why this matters:**
+- Tells an attacker the exact framework (Werkzeug = Flask development server)
+- Reveals the Python version
+- Werkzeug's built-in development server is not production-grade and ships with a debug console
+- Known CVEs for specific Werkzeug versions can be targeted directly
 
 ---
 
 ## Phase 2 — API Endpoint Discovery
 
-### 2.1 Try common API paths
+### 2.1 Navigate to the target service
 
-```bash
-curl http://MACHINE_IP:5002/api
-curl http://MACHINE_IP:5002/api/users
-curl http://MACHINE_IP:5002/api/user
-curl http://MACHINE_IP:5002/users
-curl http://MACHINE_IP:5002/admin
-curl http://MACHINE_IP:5002/debug
-curl http://MACHINE_IP:5002/health
-curl http://MACHINE_IP:5002/status
-curl http://MACHINE_IP:5002/info
-curl http://MACHINE_IP:5002/env
-curl http://MACHINE_IP:5002/config
+Open Chrome and go to:
+
+```
+http://<MACHINE_IP>:5002/
 ```
 
-### 2.2 Check for API documentation exposure
+Use Chrome's **Pretty-print** toggle on JSON responses for readable output.
 
-```bash
-curl http://MACHINE_IP:5002/docs
-curl http://MACHINE_IP:5002/swagger
-curl http://MACHINE_IP:5002/swagger.json
-curl http://MACHINE_IP:5002/openapi.json
-curl http://MACHINE_IP:5002/api-docs
-curl http://MACHINE_IP:5002/redoc
+### 2.2 User enumeration by sequential ID
+
+Test the `/api/user/<id>` endpoint with valid, boundary, and invalid IDs:
+
+| Request                          | Intent                             |
+|----------------------------------|------------------------------------|
+| `GET /api/user/1`                | Valid low ID — does a user exist?  |
+| `GET /api/user/123`              | Valid higher ID — enumerate users  |
+| `GET /api/user/999999`           | Out-of-range ID — how does it fail?|
+| `GET /api/user/-1`               | Boundary test — negative value     |
+| `GET /api/user/xyz`              | Type confusion — string not integer|
+
 ```
-
-### 2.3 Try user enumeration by ID
-
-```bash
-curl http://MACHINE_IP:5002/api/users/1
-curl http://MACHINE_IP:5002/api/users/2
-curl http://MACHINE_IP:5002/api/users/0
-curl http://MACHINE_IP:5002/api/users/-1
-curl http://MACHINE_IP:5002/api/users/abc
-curl http://MACHINE_IP:5002/api/users/999999
-curl http://MACHINE_IP:5002/api/users/null
+http://<MACHINE_IP>:5002/api/user/1
+http://<MACHINE_IP>:5002/api/user/123
+http://<MACHINE_IP>:5002/api/user/999999
+http://<MACHINE_IP>:5002/api/user/-1
+http://<MACHINE_IP>:5002/api/user/xyz
 ```
 
 ---
 
-## Phase 3 — Trigger Verbose Errors
+## Phase 3 — Boundary and Type Confusion Testing
 
-### 3.1 Send unexpected input types
+### 3.1 Out-of-range integer — `/api/user/999999`
 
-```bash
-# String where integer expected
-curl http://MACHINE_IP:5002/api/users/abc
+**What to look for:** Does the app return a clean 404, or does it leak internal details?
 
-# Special characters
-curl http://MACHINE_IP:5002/api/users/'
+- A well-configured app returns: `{"error": "User not found"}` with HTTP 404
+- A misconfigured app may return a stack trace, database error, or internal path
 
-# Negative values
-curl http://MACHINE_IP:5002/api/users/-1
+### 3.2 Negative value boundary — `/api/user/-1`
 
-# Very large number
-curl http://MACHINE_IP:5002/api/users/9999999999
-```
+**What to look for:** Negative IDs are not valid user IDs. The app should reject this.
 
-Look for:
-- Stack traces (file paths, line numbers, framework internals)
-- Database error messages (SQL, table names)
-- Internal hostnames or IP addresses
-- Debug information or flag disclosure
+- A well-configured app returns: `{"error": "Invalid user ID"}` with HTTP 400
+- A misconfigured app may attempt a database lookup with `-1` and return a verbose error or unexpected data
 
-### 3.2 Try different HTTP methods
+### 3.3 Type confusion — `/api/user/xyz`
 
-```bash
-curl -X POST   http://MACHINE_IP:5002/api/users
-curl -X PUT    http://MACHINE_IP:5002/api/users/1
-curl -X DELETE http://MACHINE_IP:5002/api/users/1
-curl -X PATCH  http://MACHINE_IP:5002/api/users/1
-curl -X OPTIONS http://MACHINE_IP:5002/api/users
-```
+**What to look for:** A string where an integer is expected should be caught at input validation.
 
-### 3.3 Send malformed Content-Type or body
+- A well-configured app returns: `{"error": "Invalid user ID"}` with HTTP 400
+- A misconfigured app in debug mode may return a **full Werkzeug stack trace** including:
+  - File paths on the server
+  - Line numbers and source code snippets
+  - The exact exception type and message
+  - Python runtime internals
 
-```bash
-curl -X POST http://MACHINE_IP:5002/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"invalid": true}'
-
-curl -X POST http://MACHINE_IP:5002/api/users \
-  -H "Content-Type: application/xml" \
-  -d '<user><id>1</id></user>'
-```
+> This is the highest-severity finding — a stack trace from a type error reveals the
+> server's internal structure and confirms debug mode is active in production.
 
 ---
 
-## Phase 4 — Document Findings
+## Phase 4 — Evidence Capture
 
-- Screenshot every response that reveals internal information
-- Note exact endpoint, method, payload, and response
-- Record in findings.md
-- Capture screenshots into screenshots/
+- Screenshot each response in Chrome with Pretty-print enabled
+- Name screenshots sequentially: `01-`, `02-`, `03-` etc.
+- Record endpoint, input, HTTP status code, and key response content in `findings.md`
+- Never save actual flag values — note that a flag was present and redact the value
