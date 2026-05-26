@@ -1,20 +1,94 @@
-# A02: Cryptographic Failures payloads and checks
+# A02: Security Misconfiguration — Payloads and Checks
+# OWASP Top 10 2025 — https://owasp.org/Top10/2025/A02_2025-Security_Misconfiguration/
+# Authorized lab use only — TryHackMe / PortSwigger environments
 
-# Common sensitive fields
-password
-token
-session
-api_key
-secret
-ssn
-credit_card
+# ─────────────────────────────────────────────
+# RECON — Service and Header Fingerprinting
+# ─────────────────────────────────────────────
 
-# JWT inspection
-jwt.io
-alg=none
-HS256
-RS256
+# Port and service scan
+nmap -sC -sV <TARGET_IP>
 
-# TLS checks
-openssl s_client -connect example.com:443
+# Response header inspection
+curl -I http://<TARGET_IP>:<PORT>/
+
+# Headers to look for:
+#   Server: (framework/version disclosure)
+#   X-Powered-By: (runtime disclosure)
+#   X-Frame-Options: (missing = clickjacking risk)
+#   Content-Security-Policy: (missing = XSS risk)
+#   Strict-Transport-Security: (missing = downgrade risk)
+
+# ─────────────────────────────────────────────
+# API ENDPOINT DISCOVERY
+# ─────────────────────────────────────────────
+
+/api/user/<id>
+/api/users
+/api/admin
+/api/config
+/debug
+/env
+/health
+/status
+/info
+/docs
+/swagger
+/swagger.json
+/openapi.json
+/api-docs
+/redoc
+
+# ─────────────────────────────────────────────
+# USER ENUMERATION — Sequential ID Testing
+# ─────────────────────────────────────────────
+
+/api/user/1
+/api/user/2
+/api/user/3
+/api/user/123
+
+# ─────────────────────────────────────────────
+# BOUNDARY TESTING — Edge Case IDs
+# ─────────────────────────────────────────────
+
+/api/user/0
+/api/user/-1
+/api/user/999999
+/api/user/9999999999
+
+# ─────────────────────────────────────────────
+# TYPE CONFUSION — Trigger Verbose Errors
+# ─────────────────────────────────────────────
+
+/api/user/abc
+/api/user/xyz
+/api/user/null
+/api/user/undefined
+/api/user/true
+/api/user/%00
+/api/user/'
+
+# ─────────────────────────────────────────────
+# HTTP METHOD TESTING
+# ─────────────────────────────────────────────
+
+# Try disallowed methods to probe for errors or unexpected behaviour
+curl -X POST   http://<TARGET_IP>:<PORT>/api/user/1
+curl -X PUT    http://<TARGET_IP>:<PORT>/api/user/1
+curl -X DELETE http://<TARGET_IP>:<PORT>/api/user/1
+curl -X PATCH  http://<TARGET_IP>:<PORT>/api/user/1
+curl -X OPTIONS http://<TARGET_IP>:<PORT>/api/user/1
+
+# ─────────────────────────────────────────────
+# DEFAULT CREDENTIALS — Common Pairs
+# ─────────────────────────────────────────────
+
+admin:admin
+admin:password
+admin:123456
+root:root
+root:toor
+guest:guest
+test:test
 
