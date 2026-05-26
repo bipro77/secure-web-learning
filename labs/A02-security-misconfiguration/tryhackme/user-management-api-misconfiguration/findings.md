@@ -38,7 +38,7 @@ Server: Werkzeug/3.1.3 Python/3.11.14
 ```
 
 ### Screenshot
-`screenshots/01-nmap-scan.png`
+`screenshots/01-recon-nmap-service-scan.png`
 
 ### Impact
 - Confirms the exact framework (Werkzeug = Flask dev server — not production-grade)
@@ -84,7 +84,7 @@ Content-Type: application/json
 No `Authorization` header was sent. The server returned full user data with no authentication.
 
 ### Screenshot
-`screenshots/02-api-user-123-enumeration.png`
+`screenshots/02-enum-api-user-123-idor.png`
 
 ### Impact
 - Any unauthenticated user can retrieve any user record by guessing an integer ID
@@ -127,7 +127,7 @@ The response confirmed the request was processed (not rejected at the boundary),
 and the error message revealed internal details about how the lookup was performed.
 
 ### Screenshot
-`screenshots/03-api-user-999999-idor-no-auth-check.png`
+`screenshots/03-enum-api-user-999999-idor-no-auth.png`
 
 ### Impact
 - Confirms that no auth check occurs before processing the request
@@ -170,7 +170,7 @@ The server accepted `-1` as a valid input and attempted to process it,
 resulting in a 500 error with verbose error detail rather than a clean 400 rejection.
 
 ### Screenshot
-`screenshots/04-api-user-negative1-verbose-error-disclosure.png`
+`screenshots/04-exploit-api-negative-id-verbose-error.png`
 
 ### Impact
 - Confirms absence of any positive-integer range validation
@@ -220,7 +220,7 @@ including the stack trace, source code context, internal file paths, and a flag
 embedded in the debug output.
 
 ### Screenshot
-`screenshots/05-api-user-xyz-verbose-error-flag-disclosure.png`
+`screenshots/05-exploit-api-xyz-stack-trace-disclosure.png`
 
 ### Impact
 - **Highest severity finding in this lab**
