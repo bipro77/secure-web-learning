@@ -2,40 +2,144 @@
 
 ## Root Cause
 
-These issues usually come from design and error-handling gaps. API enumeration can occur when routes, identifiers, status codes, or response bodies reveal more state than the client needs. Arbitrary ID access can occur when object references are accepted without strong server-side authorization. Verbose error leakage occurs when development diagnostics, stack traces, debug responses, or raw exceptions are exposed to users.
+Both findings in this lab stem from the same root cause: the application was deployed
+with development settings active. API enumeration succeeded because authentication was
+never applied to the route. Verbose error leakage occurred because `DEBUG=True` was
+left enabled, causing Werkzeug to return full stack traces instead of generic errors.
+Neither issue requires a code rewrite — both are fixed by deployment configuration
+and defensive coding patterns.
 
-## Recommended Controls
+---
 
-- Enforce server-side authorization for every object and action.
-- Design APIs so endpoints, identifiers, and error messages reveal only necessary information.
-- Use indirect or hard-to-guess identifiers where appropriate, but do not rely on obscurity instead of authorization.
-- Return consistent, generic client-facing errors for unexpected failures.
-- Log detailed diagnostics server-side instead of exposing them in API responses.
-- Normalize error response structure across endpoints.
-- Disable debug mode in production-like environments.
-- Validate input consistently and avoid exposing framework, database, or file path details.
-- Use centralized exception handling to prevent raw exceptions from reaching clients.
-- Rate limit noisy enumeration patterns where appropriate.
-- Review API documentation and unauthenticated endpoints for unnecessary exposure.
+## Fix 1 — Stop Verbose Error Leakage: Disable Debug Mode
 
-## Secure Error Response Goals
+**Problem:** `DEBUG=True` caused full Werkzeug stack traces to be returned on any
+unhandled exception, exposing file paths, source code, and sensitive data.
 
-- A user can understand that a request failed.
-- A developer can investigate the issue using protected logs.
-- The response does not reveal stack traces, framework versions, database details, internal paths, secrets, or object existence beyond what is required.
+```bash
+# Set in environment — never hardcode
+FLASK_DEBUG=0
+FLASK_ENV=production
+```
 
-## Secure ID Access Goals
+```python
+# app.py — read from environment, default to off
+import os
+app.config['DEBUG'] = os.environ.get('FLASK_DEBUG', '0') == '1'
+```
 
-- Users can access only objects they are authorized to access.
-- Authorization is checked server-side on every request.
-- Invalid, unauthorized, and nonexistent object references do not reveal unnecessary information.
-- Monitoring can detect repeated invalid identifier access patterns.
+**Also replace Werkzeug dev server with Gunicorn:**
 
-## Verification
+```bash
+# Never use: flask run (for production)
+# Use instead:
+gunicorn --bind 0.0.0.0:5002 --workers 4 app:app
+```
 
-1. Re-run the original lab request that produced verbose output or unauthorized object behavior.
-2. Confirm the API returns a generic response with an appropriate status code.
-3. Confirm detailed diagnostics are available only in protected server-side logs.
-4. Confirm legitimate API clients still receive enough information to correct normal input errors.
-5. Confirm invalid routes, IDs, and methods do not expose inconsistent details useful for enumeration.
-6. Confirm unauthorized object access is denied server-side.
+---
+
+## Fix 2 — Add a Global Exception Handler
+
+**Problem:** Unhandled exceptions (e.g., `ValueError` from `int('xyz')`) escaped to
+the client as raw Werkzeug debug pages.
+
+```python
+from flask import jsonify
+import logging
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log full detail server-side only
+    app.logger.error(f"Unhandled exception: {e}", exc_info=True)
+    # Return nothing useful to the client
+    return jsonify({"error": "An internal error occurred."}), 500
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Resource not found."}), 404
+
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({"error": "Bad request."}), 400
+```
+
+---
+
+## Fix 3 — Validate Input Type and Range at the Route
+
+**Problem:** `/api/user/xyz` and `/api/user/-1` were accepted without validation,
+reaching application code and triggering unhandled exceptions.
+
+```python
+# Use Flask's typed URL converter — rejects non-integers automatically
+@app.route('/api/user/<int:user_id>')
+def get_user(user_id):
+    # Also reject out-of-range values
+    if user_id <= 0:
+        return jsonify({"error": "Invalid user ID."}), 400
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found."}), 404
+
+    return jsonify(user.to_dict()), 200
+```
+
+---
+
+## Fix 4 — Enforce Authentication to Stop Enumeration
+
+**Problem:** `/api/user/<id>` returned data with no authentication. Any sequential
+integer ID returned the corresponding user's full record.
+
+```python
+from functools import wraps
+from flask import request, jsonify, g
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        user = verify_token(token)
+        if not user:
+            return jsonify({"error": "Unauthorized."}), 401
+        g.current_user = user
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/api/user/<int:user_id>')
+@require_auth
+def get_user(user_id):
+    # Ownership check — users can only access their own record
+    if g.current_user.id != user_id and not g.current_user.is_admin:
+        return jsonify({"error": "Forbidden."}), 403
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found."}), 404
+
+    return jsonify(user.to_dict()), 200
+```
+
+---
+
+## Secure Response Goals
+
+| Scenario                    | Bad (current)                            | Good (fixed)                  |
+|-----------------------------|------------------------------------------|-------------------------------|
+| No auth token sent          | `200 OK` + full user data                | `401 Unauthorized`            |
+| Valid ID, other user's data | `200 OK` + their full record             | `403 Forbidden`               |
+| Out-of-range ID             | Verbose error with internal detail       | `404` + `"User not found."`   |
+| Negative ID                 | `500` + stack trace                      | `400` + `"Invalid user ID."`  |
+| String ID (`xyz`)           | Full Werkzeug debug page + flag leaked   | `400` + `"Invalid user ID."`  |
+
+---
+
+## Verification Steps
+
+1. Send `GET /api/user/1` with no token → expect `401 Unauthorized`
+2. Send `GET /api/user/1` with another user's valid token → expect `403 Forbidden`
+3. Send `GET /api/user/-1` → expect `400 Bad Request`, generic message only
+4. Send `GET /api/user/xyz` → expect `400 Bad Request`, no stack trace
+5. Send `GET /api/user/999999` with valid auth → expect `404`, no internal detail
+6. Run `curl -I http://<TARGET>:5002/` → `Server` header should not reveal Werkzeug/version

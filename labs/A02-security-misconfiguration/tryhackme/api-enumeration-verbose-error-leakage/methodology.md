@@ -2,72 +2,125 @@
 
 ## Scope
 
-- Platform: TryHackMe
-- Room:
-- Target: `<TARGET_HOST>`
-- Date:
-- Authorization notes:
+| Field              | Value                                           |
+|--------------------|-------------------------------------------------|
+| Platform           | TryHackMe                                       |
+| Target             | `<TARGET_IP>:5002`                              |
+| Date               | 2025-05-25                                      |
+| Authorization      | TryHackMe lab — authorized testing only         |
+| Tool               | Chrome browser (Pretty-print JSON), nmap        |
+| OWASP 2025         | A02 — Security Misconfiguration                 |
 
 ## Objective
 
-Identify API endpoints, arbitrary ID access patterns, response differences, verbose errors, stack traces, debug fields, and improper exception handling that disclose excessive technical detail in the lab environment.
+Identify API endpoints that enumerate user data without authentication, and trigger
+verbose error responses that disclose internal framework details, stack traces, and
+debug information through misconfigured deployment settings.
 
 ## Testing Principles
 
-- Stay inside the assigned TryHackMe target and room instructions.
-- Change one variable at a time so observations are easy to explain.
-- Prefer clear notes over raw tool dumps.
-- Sanitize all requests, responses, screenshots, and identifiers before committing.
-- Avoid documenting active exploit chains.
+- Stay inside the assigned TryHackMe target only
+- Change one variable at a time — one test per request
+- Sanitize all evidence before committing (no flags, IPs, real usernames)
+- Document what the app reveals, not how to exploit it further
 
-## Workflow
+---
 
-1. Confirm the lab target and allowed testing scope.
-2. Browse the application normally and capture baseline API requests.
-3. Review routes, methods, parameters, identifiers, status codes, and response shapes.
-4. Compare valid and invalid resource identifiers such as `<RESOURCE_ID>`.
-5. Test expected and unsupported HTTP methods.
-6. Submit malformed, incomplete, or unexpected lab-safe requests to observe validation behavior.
-7. Look for debug fields, stack traces, framework messages, database errors, file paths, and inconsistent responses.
-8. Record only sanitized requests, responses, and screenshots.
+## Phase 1 — Reconnaissance
 
-## Methodology Sections
+### 1.1 Service Fingerprinting
 
-### 1. Baseline Mapping
+```bash
+nmap -sC -sV <TARGET_IP>
+```
 
-- Identify visible API calls.
-- Note endpoint names, HTTP methods, parameters, and normal status codes.
-- Record expected application behavior.
+**Goal:** Identify open ports, services, and version banners.
 
-### 2. API Enumeration Checks
+**What was found:**
 
-- Compare known and unknown routes.
-- Compare valid and invalid resource identifiers.
-- Compare allowed and unsupported HTTP methods.
-- Observe whether response differences reveal endpoint existence, object existence, or application state.
+| Port | Service | Version                       |
+|------|---------|-------------------------------|
+| 22   | SSH     | OpenSSH                       |
+| 5002 | HTTP    | Werkzeug/3.1.3 Python/3.11.14 |
+| 5003 | HTTP    | Werkzeug/3.1.3 Python/3.11.14 |
+| 5004 | HTTP    | Werkzeug/3.1.3 Python/3.11.14 |
 
-### 3. Arbitrary ID Access Checks
+**Key signal:** `Werkzeug` in the `Server` header means the app is running Flask's
+built-in development server — not a production WSGI server. This strongly suggests
+debug mode may be active.
 
-- Identify user-controlled identifiers.
-- Replace identifiers with sanitized placeholders such as `<RESOURCE_ID>`.
-- Compare access behavior across valid, invalid, and unauthorized object references.
-- Document whether authorization appears to happen server-side.
+---
 
-### 4. Verbose Error and Stack Trace Checks
+## Phase 2 — API Enumeration
 
-- Send malformed lab-safe input.
-- Review error body, headers, and status code.
-- Note any stack trace, exception type, framework version, database message, debug flag, or internal path.
+### 2.1 Baseline — Valid User IDs
 
-### 5. Exception Handling Review
+Open Chrome, enable Pretty-print, and browse sequentially:
 
-- Check whether errors are consistent across similar endpoints.
-- Confirm whether client-facing messages are generic.
-- Identify where detailed diagnostic information should be moved to protected server-side logs.
+```
+http://<TARGET_IP>:5002/api/user/1
+http://<TARGET_IP>:5002/api/user/2
+http://<TARGET_IP>:5002/api/user/123
+```
 
-## Data Handling
+**Goal:** Confirm the endpoint exists and returns user data without authentication.
 
-- Replace secrets with `<REDACTED>`.
-- Replace session material with `<SESSION_COOKIE>` or `<TOKEN>`.
-- Replace target-specific values with `<TARGET_HOST>`, `<RESOURCE_ID>`, or `<USER_ID>`.
-- Do not store real flags, credentials, target IPs, tokens, or session data.
+**What to observe:**
+- Does it return data without a login or token? → no auth enforced
+- What fields are returned? → scope of data exposure
+- Are IDs sequential and predictable? → full enumeration is trivial
+
+### 2.2 Out-of-Range ID
+
+```
+http://<TARGET_IP>:5002/api/user/999999
+```
+
+**Goal:** Observe how the app handles a valid-type but non-existent ID.
+
+**What to observe:**
+- Does it return a clean `404`? → well handled
+- Does the error message reveal internal detail? → information leakage
+- Is there a difference between the "not found" and "found" response? → enumeration signal
+
+---
+
+## Phase 3 — Boundary and Type Confusion Testing
+
+### 3.1 Negative ID
+
+```
+http://<TARGET_IP>:5002/api/user/-1
+```
+
+**Goal:** Test whether the app validates that IDs must be positive integers.
+
+**What to observe:**
+- Does it return `400 Bad Request`? → input validation present
+- Does it crash with a 500? → no validation, no error handler
+
+### 3.2 String Input (Type Confusion)
+
+```
+http://<TARGET_IP>:5002/api/user/xyz
+```
+
+**Goal:** Pass a string where an integer is expected to trigger an unhandled exception.
+
+**What to observe:**
+- Does it return a clean `400`? → typed URL converter present
+- Does it return a `500` with a Werkzeug debug page? → `DEBUG=True` confirmed
+- What does the stack trace reveal? (file paths, source code, embedded data)
+
+> This is the highest-value test in this lab. A full Werkzeug stack trace confirms
+> debug mode is active and exposes internal implementation details.
+
+---
+
+## Phase 4 — Evidence Capture
+
+- Screenshot every response in Chrome with Pretty-print enabled
+- Note: endpoint, HTTP method, input, status code, key response detail
+- Redact all flag values, usernames, emails, and internal paths before saving
+- File screenshots into `screenshots/` within this lab folder
+- Record findings in `findings.md`
