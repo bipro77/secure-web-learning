@@ -1,8 +1,9 @@
 # secure-web-learning
 
-Portfolio-quality cybersecurity learning repository for OWASP Top 10 practice, web application testing notes, API security labs, secure coding references, and defensive remediation writeups.
+Personal cybersecurity learning repository.
+Structured around **OWASP Top 10 2025** (migrated from 2021).
 
-This repository is designed to stay readable as it grows. Each lab is organized by OWASP category, platform, and topic so future TryHackMe, PortSwigger, Burp Suite, OWASP Juice Shop, and API security exercises can be added without changing the overall structure.
+Portfolio-quality writeups for web application testing, API security labs, secure coding references, and defensive remediation notes. Each lab is organized by OWASP 2025 category, platform, and topic for long-term maintainability.
 
 ## Ethical Use Disclaimer
 
@@ -10,23 +11,36 @@ This repository is for defensive security education in authorized environments o
 
 Do not use these notes, payloads, or workflows against third-party systems without authorization. Do not commit real flags, credentials, tokens, session cookies, private keys, target IP addresses, customer data, production screenshots, internal hostnames, raw exploit output, active exploit chains, or other sensitive material.
 
+## OWASP Top 10 2025
+
+| ID  | Category                                   | Folder                                          |
+|-----|--------------------------------------------|-------------------------------------------------|
+| A01 | Broken Access Control *(+ SSRF)*           | `labs/A01-broken-access-control/`               |
+| A02 | Security Misconfiguration                  | `labs/A02-security-misconfiguration/`           |
+| A03 | Software Supply Chain Failures             | `labs/A03-software-supply-chain-failures/`      |
+| A04 | Cryptographic Failures                     | `labs/A04-cryptographic-failures/`              |
+| A05 | Injection                                  | `labs/A05-injection/`                           |
+| A06 | Insecure Design                            | `labs/A06-insecure-design/`                     |
+| A07 | Authentication Failures                    | `labs/A07-authentication-failures/`             |
+| A08 | Software or Data Integrity Failures        | `labs/A08-software-or-data-integrity-failures/` |
+| A09 | Security Logging and Alerting Failures     | `labs/A09-security-logging-and-alerting-failures/` |
+| A10 | Mishandling of Exceptional Conditions      | `labs/A10-mishandling-of-exceptional-conditions/` |
+
+## Version History
+
+| Version | Date       | Notes                                      |
+|---------|------------|--------------------------------------------|
+| 2021    | 2024       | Initial structure (OWASP Top 10 2021)      |
+| 2025    | 2025-05-25 | Migrated to OWASP Top 10 2025              |
+
 ## Current Active Lab
 
-Current lab:
-
 ```text
-labs/A04-insecure-design/tryhackme/api-enumeration-verbose-error-leakage/
+labs/A06-insecure-design/tryhackme/api-enumeration-verbose-error-leakage/
 ```
 
-Coverage:
-
-- API enumeration
-- Arbitrary ID access
-- Insecure design
-- Verbose error leakage
-- Stack trace disclosure
-- Improper exception handling
-- Debug information exposure
+Coverage: API enumeration · Arbitrary ID access · Verbose error leakage ·
+Stack trace disclosure · Improper exception handling · Debug information exposure
 
 ## Repository Structure
 
@@ -35,16 +49,16 @@ secure-web-learning/
 ├── .gitignore
 ├── README.md
 ├── labs/
-│   ├── A01-broken-access-control/
-│   ├── A02-cryptographic-failures/
-│   ├── A03-injection/
-│   ├── A04-insecure-design/
-│   ├── A05-security-misconfiguration/
-│   ├── A06-vulnerable-components/
+│   ├── A01-broken-access-control/      ← also covers SSRF (see ssrf-note.md)
+│   ├── A02-security-misconfiguration/
+│   ├── A03-software-supply-chain-failures/
+│   ├── A04-cryptographic-failures/
+│   ├── A05-injection/
+│   ├── A06-insecure-design/
 │   ├── A07-authentication-failures/
-│   ├── A08-software-integrity-failures/
-│   ├── A09-logging-monitoring-failures/
-│   └── A10-ssrf/
+│   ├── A08-software-or-data-integrity-failures/
+│   ├── A09-security-logging-and-alerting-failures/
+│   └── A10-mishandling-of-exceptional-conditions/
 ├── methodology/
 │   └── templates/
 ├── scripts/
@@ -53,28 +67,13 @@ secure-web-learning/
 
 Each OWASP category folder contains:
 
-- `README.md` for category overview, objectives, and checklist
-- `notes.md` for lab observations and learning notes
-- `payloads.txt` for sanitized lab-only payload ideas
-- `remediation.md` for mitigation and validation guidance
-- `screenshots/.gitkeep` for approved lab screenshots
-- `portswigger/.gitkeep` for PortSwigger lab notes
-- `tryhackme/.gitkeep` for TryHackMe lab notes
-
-## OWASP Top 10 Index
-
-| ID | Category | Folder |
-| --- | --- | --- |
-| A01 | Broken Access Control | `labs/A01-broken-access-control/` |
-| A02 | Cryptographic Failures | `labs/A02-cryptographic-failures/` |
-| A03 | Injection | `labs/A03-injection/` |
-| A04 | Insecure Design | `labs/A04-insecure-design/` |
-| A05 | Security Misconfiguration | `labs/A05-security-misconfiguration/` |
-| A06 | Vulnerable Components | `labs/A06-vulnerable-components/` |
-| A07 | Authentication Failures | `labs/A07-authentication-failures/` |
-| A08 | Software Integrity Failures | `labs/A08-software-integrity-failures/` |
-| A09 | Logging and Monitoring Failures | `labs/A09-logging-monitoring-failures/` |
-| A10 | Server-Side Request Forgery | `labs/A10-ssrf/` |
+- `README.md` — category overview, 2025 mapping, objectives, and checklist
+- `notes.md` — lab observations and learning notes
+- `payloads.txt` — sanitized lab-only payload ideas
+- `remediation.md` — mitigation and validation guidance
+- `screenshots/.gitkeep` — approved lab screenshots
+- `portswigger/` — PortSwigger Web Security Academy lab notes
+- `tryhackme/` — TryHackMe lab notes
 
 ## Documentation Standard
 
