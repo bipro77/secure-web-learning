@@ -1,0 +1,19 @@
+# A06: Vulnerable Components checks
+
+# Inventory files
+package.json
+package-lock.json
+requirements.txt
+Pipfile.lock
+composer.lock
+pom.xml
+build.gradle
+Gemfile.lock
+
+# Version discovery
+Server
+X-Powered-By
+generator
+asset filenames
+error pages
+

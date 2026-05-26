@@ -1,0 +1,20 @@
+# A01: Broken Access Control payloads and test cases
+
+# IDOR examples
+/users/1
+/users/2
+/api/users/1
+/api/users/2
+
+# Forced browsing examples
+/admin
+/administrator
+/dashboard
+/account/settings
+
+# Method tampering examples
+GET /resource/123
+POST /resource/123
+PUT /resource/123
+DELETE /resource/123
+

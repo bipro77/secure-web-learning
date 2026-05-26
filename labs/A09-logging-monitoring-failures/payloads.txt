@@ -1,0 +1,14 @@
+# A09: Logging and monitoring test cases
+
+failed login
+successful login
+password reset request
+access denied
+input validation failure
+admin action
+privilege change
+high-volume request pattern
+
+# Log injection probe for labs only
+test%0aFAKE_LOG_ENTRY
+

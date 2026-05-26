@@ -1,0 +1,23 @@
+# A05: Security Misconfiguration checks
+
+# Common paths
+/admin
+/debug
+/server-status
+/actuator
+/actuator/env
+/.git/
+/.env
+/phpinfo.php
+
+# HTTP methods
+OPTIONS /
+TRACE /
+
+# Header checks
+Content-Security-Policy
+Strict-Transport-Security
+X-Frame-Options
+X-Content-Type-Options
+Referrer-Policy
+

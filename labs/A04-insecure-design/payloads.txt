@@ -1,0 +1,42 @@
+# A04: Insecure Design test ideas
+#
+# Store only sanitized, lab-safe examples here.
+# Do not include real target IPs, credentials, flags, session tokens, or active exploit chains.
+
+# Workflow manipulation
+repeat previous step
+skip required step
+change price or quantity
+reuse one-time token
+submit expired token
+
+# Abuse cases
+rapid repeated requests
+negative quantity
+large quantity
+duplicate account action
+
+# API enumeration observations
+GET /api/<resource>
+GET /api/<resource>/<RESOURCE_ID>
+POST /api/<resource>
+OPTIONS /api/<resource>
+
+# Arbitrary ID access observations
+GET /api/<resource>/<VALID_RESOURCE_ID>
+GET /api/<resource>/<INVALID_RESOURCE_ID>
+GET /api/<resource>/<UNAUTHORIZED_RESOURCE_ID>
+
+# Verbose error checks
+malformed JSON body
+missing required parameter
+unexpected parameter type
+unsupported HTTP method
+invalid resource identifier
+
+# Debug disclosure indicators
+stack trace in response
+framework or library name in response
+internal file path in response
+database error in response
+debug=true style response field

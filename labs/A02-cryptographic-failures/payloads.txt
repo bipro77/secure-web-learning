@@ -1,0 +1,20 @@
+# A02: Cryptographic Failures payloads and checks
+
+# Common sensitive fields
+password
+token
+session
+api_key
+secret
+ssn
+credit_card
+
+# JWT inspection
+jwt.io
+alg=none
+HS256
+RS256
+
+# TLS checks
+openssl s_client -connect example.com:443
+

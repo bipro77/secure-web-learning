@@ -1,0 +1,20 @@
+# A07: Authentication test cases
+
+# Common weak credentials for intentionally vulnerable labs only
+admin:admin
+admin:password
+user:user
+test:test
+
+# Session checks
+logout then reuse session cookie
+change password then reuse old session
+reset password then reuse old reset token
+
+# Cookie attributes
+HttpOnly
+Secure
+SameSite
+Expires
+Max-Age
+

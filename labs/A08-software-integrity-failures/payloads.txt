@@ -1,0 +1,16 @@
+# A08: Integrity failure checks
+
+# Serialized object clues
+rO0AB
+O:
+pickle
+__type
+base64 encoded blobs
+
+# Integrity checks
+missing signature
+weak hash
+unsigned update
+unverified package source
+trusted client-side state
+
