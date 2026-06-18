@@ -26,7 +26,7 @@ https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/
 
 ## Lab Platforms
 
-- [ ] TryHackMe
+- [x] TryHackMe
 - [ ] PortSwigger
 
 ## Tools
@@ -47,12 +47,12 @@ https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/
 
 ## Checklist
 
-- [ ] Dependency manifest reviewed
-- [ ] Versions and CVEs checked
-- [ ] Package origins validated
+- [x] Dependency manifest reviewed
+- [x] Versions and CVEs checked
+- [x] Package origins validated
 - [ ] Build pipeline reviewed
-- [ ] Screenshots captured
-- [ ] Remediation written
+- [x] Screenshots captured
+- [x] Remediation written
 
 ## Notes
 

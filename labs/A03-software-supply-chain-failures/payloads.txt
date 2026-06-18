@@ -1,26 +1,55 @@
-# A03: Injection payloads
+# A03: Software Supply Chain Failures — Checks and Payloads
+# OWASP Top 10 2025 — https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/
+# Authorized lab use only — TryHackMe / PortSwigger environments
 
-# SQL injection probes
-'
-"
-' OR '1'='1
-" OR "1"="1
-'--
-admin'--
+# RECON — Service and Application Fingerprinting
 
-# Command injection probes
-; id
-&& id
-| id
-`id`
-$(id)
+nmap -sC -sV <TARGET_IP>
+curl -I http://<TARGET_IP>:<PORT>/
+curl http://<TARGET_IP>:<PORT>/api/health
 
-# XSS probes
-<script>alert(1)</script>
-"><img src=x onerror=alert(1)>
+# SOURCE REVIEW — Dependency Boundary Checks
 
-# Template injection probes
-{{7*7}}
-${7*7}
-<%= 7*7 %>
+# Look for local import path manipulation
+sys.path.insert(0, ...)
+sys.path.append(...)
+PYTHONPATH=...
 
+# Look for unverified local or vendored libraries
+from vulnerable_utils import process_data, format_output, debug_info
+import vulnerable_utils
+lib/
+vendor/
+third_party/
+
+# Look for missing dependency controls
+requirements.txt
+requirements.lock
+pyproject.toml
+poetry.lock
+Pipfile.lock
+package-lock.json
+sbom.json
+
+# API TESTING — Debug and Dependency Exposure
+
+POST /api/process
+Content-Type: application/json
+
+{"data":"test"}
+{"data":"debug"}
+{"data":""}
+
+# Expected secure behavior:
+# - no public debug output
+# - no dependency internals
+# - no stack traces
+# - generic error responses only
+
+# SUPPLY CHAIN VALIDATION
+
+pip-audit
+pip list --format=json
+pip freeze
+cyclonedx-py environment --output-format json --output-file sbom.json
+osv-scanner --sbom sbom.json
