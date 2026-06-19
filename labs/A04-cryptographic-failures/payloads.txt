@@ -1,42 +1,60 @@
-# A04: Insecure Design test ideas
+# A04: Cryptographic Failures test ideas
 #
 # Store only sanitized, lab-safe examples here.
-# Do not include real target IPs, credentials, flags, session tokens, or active exploit chains.
+# Do not include real target IPs, credentials, flags, session tokens, keys, or active exploit chains.
 
-# Workflow manipulation
-repeat previous step
-skip required step
-change price or quantity
-reuse one-time token
-submit expired token
+# Client-side source review terms
+key
+secret
+password
+passphrase
+decrypt
+encrypt
+crypto
+cipher
+iv
+nonce
+salt
+token
+jwt
 
-# Abuse cases
-rapid repeated requests
-negative quantity
-large quantity
-duplicate account action
+# Browser storage checks
+localStorage
+sessionStorage
+document.cookie
+IndexedDB
+Cache Storage
 
-# API enumeration observations
-GET /api/<resource>
-GET /api/<resource>/<RESOURCE_ID>
-POST /api/<resource>
-OPTIONS /api/<resource>
+# Static asset review
+view-source:<TARGET_URL>
+/scripts/
+/assets/
+/static/
+main.js
+app.js
+bundle.js
+crypto.js
 
-# Arbitrary ID access observations
-GET /api/<resource>/<VALID_RESOURCE_ID>
-GET /api/<resource>/<INVALID_RESOURCE_ID>
-GET /api/<resource>/<UNAUTHORIZED_RESOURCE_ID>
+# Weak or deprecated algorithm indicators
+MD5
+SHA1
+DES
+3DES
+RC4
+ECB
+AES-CBC without authentication
+hardcoded IV
+static nonce
 
-# Verbose error checks
-malformed JSON body
-missing required parameter
-unexpected parameter type
-unsupported HTTP method
-invalid resource identifier
+# Key management indicators
+hardcoded key in JavaScript
+key returned in API response
+key stored in browser storage
+shared key reused across users
+missing key rotation
 
-# Debug disclosure indicators
-stack trace in response
-framework or library name in response
-internal file path in response
-database error in response
-debug=true style response field
+# Verification observations
+protected document returned before authorization
+ciphertext and key delivered to same client
+client-side decryption reveals protected document
+server-side authorization required before plaintext access

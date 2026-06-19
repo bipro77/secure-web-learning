@@ -24,7 +24,7 @@ https://owasp.org/Top10/2025/A04_2025-Cryptographic_Failures/
 
 ## Lab Platforms
 
-- [ ] TryHackMe
+- [x] TryHackMe
 - [ ] PortSwigger
 
 ## Tools

@@ -1,25 +1,25 @@
-# Remediation: A04 Insecure Design
+# Remediation: A04 Cryptographic Failures
 
 ## Root Cause
 
-Document the design assumption, missing control, or error-handling decision that allowed enumeration, debug disclosure, or excessive error detail.
+The application exposes cryptographic key material and decryption logic to the browser. Because the client receives both the protected data and the material needed to decrypt it, encryption no longer provides confidentiality.
 
 ## Recommended Fixes
 
-- Add threat modeling to design work.
-- Define abuse cases for important workflows.
-- Enforce business rules server-side.
-- Add rate limits, replay protection, and state validation where appropriate.
-- Review trust boundaries before implementation.
-- Return consistent, generic client-facing error messages.
-- Keep detailed diagnostics in protected server-side logs only.
-- Disable debug mode in production-like environments.
-- Normalize API responses so invalid routes, methods, and IDs do not reveal unnecessary implementation details.
+- Remove hardcoded keys, passphrases, and secrets from client-side code.
+- Store key material in a server-side secret manager or key management service.
+- Enforce authorization on the server before returning protected documents.
+- Perform decryption in trusted backend components unless a documented end-to-end encryption design requires otherwise.
+- Use modern authenticated encryption such as AES-GCM or ChaCha20-Poly1305.
+- Generate keys with a cryptographically secure random source.
+- Use unique nonces or IVs where required by the algorithm.
+- Rotate any key that has been exposed to the browser.
+- Add secret scanning for source code, generated frontend bundles, and deployment artifacts.
 
 ## Verification
 
-1. Re-test the abused workflow.
-2. Confirm invalid states are rejected.
-3. Confirm malformed API requests no longer expose stack traces, framework details, file paths, or debug fields.
-4. Confirm normal business flow still works.
-5. Add tests for abuse cases and exception-handling paths.
+1. Search page source and bundled JavaScript for keys, secrets, passphrases, and decryption material.
+2. Confirm protected documents are not returned before server-side authorization succeeds.
+3. Confirm browser developer tools no longer reveal reusable decryption keys.
+4. Attempt the previous document decryption path and verify browser-only material is insufficient.
+5. Confirm secret scanning runs locally and in CI.
